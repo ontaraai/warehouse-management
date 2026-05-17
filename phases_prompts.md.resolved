@@ -1,0 +1,174 @@
+# Development Phases & Prompts
+
+This document outlines the phased development plan for the Warehouse Management System PWA.
+
+## Phase 1: Database Setup & Infrastructure
+
+**Prompt for AI:**
+> "I need to set up the backend database for a multi-user Warehouse Management System using Supabase (PostgreSQL).
+> The system needs the following tables:
+> - `warehouses`: id, name, owner_id (references auth.users), created_at
+> - `warehouse_members`: id, warehouse_id, user_id, invited_email, joined_at
+> - `categories`: id, warehouse_id, name, created_at
+> - `products`: id, warehouse_id, category_id, name, sku, unit, price (optional), current_stock (default 0), low_stock_threshold (default 0), created_at, updated_at
+> - `transactions`: id, warehouse_id, created_by, type ('inward'/'outward'), transaction_date, remark, created_at
+> - `transaction_items`: id, transaction_id, product_id, quantity, stock_before, stock_after
+> 
+> **Requirements:**
+> 1. Provide the complete SQL script to create these tables.
+> 2. Implement strict Row Level Security (RLS) on all tables so users can only access data for warehouses they are members of. Include the helper function to get user warehouses.
+> 3. Provide the SQL for three database functions:
+>    - `process_transaction`: an atomic function that handles an inward/outward transaction, updates product stock, records transaction items with stock snapshots, and rolls back if an outward transaction would result in negative stock.
+>    - `delete_transaction`: an atomic function that reverses the stock changes of a transaction and then deletes it.
+>    - `create_warehouse_with_owner`: a trigger function that runs on new user sign-up to automatically create a default warehouse and add them as a member.
+> 4. Tell me exactly where and how to run this SQL in my Supabase project."
+
+**How to Test Phase 1:**
+1.  **Execution:** Copy the provided SQL and paste it into the Supabase SQL Editor. Run it. It should execute without errors.
+2.  **Table Verification:** Check the Supabase Table Editor. All tables (`warehouses`, `warehouse_members`, `categories`, `products`, `transactions`, `transaction_items`) should exist.
+3.  **Trigger Verification:** Check Database -> Triggers in Supabase to ensure the auth hook/trigger for new user creation is active.
+
+---
+
+## Phase 2: Project Setup, Auth & Routing
+
+**Prompt for AI:**
+> "I am building a React Progressive Web App (PWA) using Vite, TypeScript, and Supabase.
+> **Task:** Set up the initial project structure, configure styling, implement authentication, and set up basic routing.
+> 
+> **Requirements:**
+> 1. **Project Setup:** Initialize the Vite + React (TS) project. Install necessary dependencies (`@supabase/supabase-js`, `react-router-dom`, `vite-plugin-pwa`, `lucide-react` for icons).
+> 2. **PWA Config:** Configure `vite.config.ts` using `vite-plugin-pwa` for a basic installable app shell.
+> 3. **Design System:** Create an `index.css` with a clean, modern, mobile-first design system. Use a color palette inspired by standard warehouse apps but refined (whites, soft grays, vibrant green for inward, red for outward, blue for primary actions). Use CSS variables for easy theming.
+> 4. **Supabase Client:** Create the Supabase client connection utility. (I will provide the URL and Anon Key later in an `.env` file, just write the code that uses them).
+> 5. **Auth Context:** Create an `AuthContext.tsx` that handles email/password login, signup, Google OAuth login, and logout.
+> 6. **Routing & Layout:** Set up `React Router v7`. Create an App Shell layout with a bottom navigation bar suitable for mobile. Implement a protected route wrapper that redirects unauthenticated users to a `LoginPage`.
+> 7. **Initial Pages:** Create scaffolding for `LoginPage` (with email and Google auth options) and an empty `DashboardPage`.
+
+**How to Test Phase 2:**
+1.  **Environment:** Create your `.env.local` file with your Supabase URL and Anon Key.
+2.  **Run:** Execute `npm install` and `npm run dev`.
+3.  **UI:** The app should load the Login Page. It should look modern and mobile-friendly.
+4.  **Auth Flow:** Try signing up with an email/password. Then try logging out and logging back in. Try the Google OAuth button (it should redirect to Supabase's Google auth flow if you've enabled it in Supabase dashboard).
+5.  **Routing:** After successful login, you should be redirected to the Dashboard page, and you should see the bottom navigation bar.
+
+---
+
+## Phase 3: Core CRUD (Products & Categories)
+
+**Prompt for AI:**
+> "We are continuing the development of our React WMS PWA. We have authentication and basic routing set up.
+> **Task:** Implement the Warehouse Context, Product Categories, and Product CRUD operations.
+> 
+> **Requirements:**
+> 1. **Warehouse Context:** Create a `WarehouseContext.tsx` that fetches the active warehouse for the logged-in user and provides it to the app. (For now, just select the first one they belong to).
+> 2. **Custom Hooks:** Create `useCategories` and `useProducts` hooks using Supabase. These should handle fetching, creating, updating, and deleting categories and products for the *active warehouse*.
+> 3. **Categories UI:** Implement a way to view and create product categories (this can be part of the Product Form or a separate small section).
+> 4. **Products Page (`ProductsPage.tsx`):**
+>    - Display a list of products showing name, SKU, current stock, unit, and a low stock warning indicator if applicable.
+>    - Add a search bar to filter products by name.
+>    - Include category filter chips.
+>    - Include a Floating Action Button (FAB) to add a new product.
+> 5. **Product Form (`ProductFormPage.tsx`):**
+>    - Create a form to add/edit a product. Fields: Name (required), SKU, Category (dropdown with option to create new), Unit (dropdown: Pc, Kg, Box, etc.), Price (optional), Low Stock Threshold.
+> 6. **Design:** Ensure the UI matches the established design system (mobile-first, clean, accessible). Use the reference color scheme.
+
+**How to Test Phase 3:**
+1.  **Navigation:** Log in and navigate to the Products section via the bottom nav.
+2.  **Categories:** Try creating a few categories (e.g., 'Electronics', 'Hardware').
+3.  **Products:** Add several products. Ensure validation works (name is required).
+4.  **Display:** Verify the products appear in the list with correct stock levels (should be 0 initially).
+5.  **Filtering:** Test the search bar and category filters to ensure they correctly filter the product list.
+6.  **Edit/Delete:** Try editing a product's details. Try deleting a product.
+
+---
+
+## Phase 4: Transactions (Inward & Outward)
+
+**Prompt for AI:**
+> "Our React WMS PWA now handles product management. We need to build the transaction engine.
+> **Task:** Implement the mobile-friendly Cart interface for Inward and Outward transactions.
+> 
+> **Requirements:**
+> 1. **Transaction Page (`TransactionPage.tsx`):**
+>    - Create a unified page that toggles between 'Add Inward' (Green theme) and 'Add Outward' (Red theme).
+>    - Include a Date Picker (defaults to today).
+>    - Build a Cart Table: Columns should be No, Item, Curr. Stock, and Qty.
+>    - Add a "+ Select Item" button that opens a full-screen, searchable Product Selector Modal.
+>    - Each row in the cart must have a quantity input and a delete (trash) button.
+>    - Add an optional "Remark" text area.
+>    - Add a "Clear Cart" button.
+>    - Add a "Submit" button at the bottom.
+> 2. **Logic:**
+>    - When "Submit" is clicked, call the Supabase RPC `process_transaction` (which we created in Phase 1), passing the type ('inward'/'outward'), the array of items (product_id, quantity), remark, and date.
+>    - Show clear success toasts or error messages (especially if outward stock is insufficient).
+> 3. **Design:** Strictly adhere to the provided layout: Header with type, date on top left, clear cart on top right, the items table, select item button below it, remark field, and a large submit button at the bottom.
+
+**How to Test Phase 4:**
+1.  **Inward:** Navigate to 'Add Transaction'. Toggle to Inward. Select an item, set quantity to 50, and submit.
+2.  **Verification:** Go back to the Products page. Verify the item's stock has increased by 50.
+3.  **Outward:** Go to 'Add Transaction'. Toggle to Outward. Select the same item, set quantity to 10, and submit.
+4.  **Verification:** Check Products page. Stock should be 40.
+5.  **Validation:** Try an Outward transaction for 100 items (more than in stock). The app should show an error message and the transaction should *not* proceed.
+
+---
+
+## Phase 5: Transaction History & Export
+
+**Prompt for AI:**
+> "The WMS PWA can now record transactions. We need to let users view their history and export it.
+> **Task:** Implement the Transaction History page and PDF export functionality.
+> 
+> **Requirements:**
+> 1. **Transaction History Page (`TransactionHistoryPage.tsx`):**
+>    - Fetch and display a list of all transactions for the active warehouse, sorted newest first.
+>    - Each entry should show the Date, Type (In/Out with color-coded arrows), Remark, and a summary of items.
+>    - Implement Date Filters: Buttons for 'Today', 'Yesterday', 'This Week', 'This Month', and 'Custom Range'.
+>    - Include a Search bar to filter by product name or remark within the selected date range.
+>    - Display a Summary Bar at the top: Total Transactions count, Total Items In, Total Items Out.
+> 2. **Delete Transaction:**
+>    - Add the ability to delete a transaction. This must call the Supabase RPC `delete_transaction` to ensure stock levels are properly reversed. Include a confirmation dialog before deletion.
+> 3. **PDF Export:**
+>    - Install `jspdf` and `jspdf-autotable`.
+>    - Add an "Export PDF" button.
+>    - Generate a clean, professional, bank-statement style PDF report of the currently filtered transactions. It should include a header (Warehouse Name, Date Range, Generation Time), a table of transactions (Date, Type, Product, Qty, Stock Snapshot), and a summary row at the bottom.
+
+**How to Test Phase 5:**
+1.  **View Data:** Navigate to the History tab. You should see the transactions you created in Phase 4.
+2.  **Filters:** Test the date filters and search bar to ensure they update the list correctly.
+3.  **Delete/Reverse:** Create a test inward transaction for 5 items. Note the product's new stock. Go to History, delete that specific transaction. Go to Products and verify the stock decreased by 5.
+4.  **Export:** Click "Export PDF". Open the downloaded file and verify the layout looks professional and the data matches the filtered view on screen.
+
+---
+
+## Phase 6: Dashboard & Team Management
+
+**Prompt for AI:**
+> "This is the final phase of the core WMS PWA development. We need to finish the dashboard and add the team management features.
+> **Task:** Build out the Dashboard summary and the Team Management page.
+> 
+> **Requirements:**
+> 1. **Dashboard Page (`DashboardPage.tsx`):**
+>    - Display a greeting and the name of the currently active warehouse.
+>    - Fetch and display accurate numbers for summary cards: "Total Products", "Low Stock" (highlighted if > 0).
+>    - Display a small list of the 5 most recent transactions.
+> 2. **Team Page (`TeamPage.tsx`):**
+>    - Create a page to manage warehouse members.
+>    - Display the current members of the active warehouse.
+>    - Provide an input field and button to "Invite via Email".
+>    - Provide a way for the warehouse owner to remove members.
+> 3. **Warehouse Switcher:**
+>    - Add a UI element (e.g., in the header or a side menu/drawer) that allows users who belong to multiple warehouses to switch their active warehouse context.
+
+**How to Test Phase 6:**
+1.  **Dashboard:** Navigate to the Dashboard. Verify the numbers for Total Products and Low Stock accurately reflect your data. Click quick action buttons to ensure they route correctly.
+2.  **Team Invites:** Go to the Team page. As User A, invite a dummy email address.
+3.  **Warehouse Switching:** (Requires a second account). Create User B. User B should have their own default warehouse. Have User A invite User B's email. Log in as User B. User B should now see a way to switch between their default warehouse and User A's warehouse. Switch to User A's warehouse and verify User B can see User A's products.
+
+---
+
+## Next Steps:
+1.  Review these prompts.
+2.  Set up your Supabase project (Project URL, Service Role Key, Anon Key).
+3.  Enable Google Auth in your Supabase project settings if you intend to use it immediately.
+4.  When you are ready, feed me **Prompt 1** to begin.
