@@ -53,7 +53,7 @@ export const TransactionHistoryPage: React.FC = () => {
     ? { from: customFrom, to: customTo }
     : getDateRange(preset);
 
-  const { transactions, loading, fetchTransactions, deleteTransaction } = useTransactions({
+  const { transactions, loading, deleteTransaction } = useTransactions({
     dateFrom: dateRange.from,
     dateTo: dateRange.to,
   });

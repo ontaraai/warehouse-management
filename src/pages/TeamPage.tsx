@@ -60,7 +60,10 @@ export const TeamPage: React.FC = () => {
       // Look up if the user exists in auth
       // We can't query auth.users directly from client, so we try to add by email
       // If user exists, we find them via a lookup approach
-      const { data: existingMembers } = await supabase
+      // Look up if the user exists in auth
+      // We can't query auth.users directly from client, so we try to add by email
+      // If user exists, we find them via a lookup approach
+      await supabase
         .from('warehouse_members')
         .select('user_id')
         .eq('warehouse_id', warehouse.id);
@@ -102,7 +105,8 @@ export const TeamPage: React.FC = () => {
       // We'll create a function to handle this server-side
 
       // For now, let's use a direct approach with a function
-      const { data, error } = await supabase.rpc('invite_user_to_warehouse', {
+      // For now, let's use a direct approach with a function
+      const { error } = await supabase.rpc('invite_user_to_warehouse', {
         p_warehouse_id: warehouse.id,
         p_email: email,
       });

@@ -26,7 +26,7 @@ export function useProducts() {
 
   const createProduct = async (product: {
     name: string;
-    sku?: string;
+    sku?: string | null;
     category_id?: string | null;
     unit: string;
     price?: number | null;
